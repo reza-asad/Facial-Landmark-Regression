@@ -29,7 +29,7 @@ class DataList():
         return img.crop(coords)
 
     def MakeList(self):
-        with open(labelPath, 'r') as f:
+        with open(self.labelPath, 'r') as f:
             for line in f:
                 # Extract the label
                 label = line.split()
@@ -56,7 +56,7 @@ class DataList():
                     h, w = imgTensor.shape
                     imgTensor = imgTensor.view((1, h, w))
                     # Create tensor object from the labels.
-                    labelTensor = self.ToTensor(landMarks).long()
+                    labelTensor = self.ToTensor(landMarks)
                     # Add the data point to the data list.
                     self.data.append({'label':labelTensor, 'img':imgTensor})
 
@@ -73,12 +73,12 @@ class DataList():
         self.dataVal = self.data[numTrain: ]
 
 
-# small test
-labelPath = '/Users/rezaasad/Documents/CMPT742/Project01/data/training_data/LFW_annotation_train.txt'
-baseImagePath = '/Users/rezaasad/Documents/CMPT742/Project01/data/lfw'
-d = DataList(labelPath, baseImagePath)
-img = d.OpenImg('Leonardo_DiCaprio_0009.jpg')
-d.MakeList()
-d.DataSplit()
-print(len(d.dataVal))
-print(len(d.dataTrain))
+# # small test
+# labelPath = '/Users/rezaasad/Documents/CMPT742/Project01/data/training_data/LFW_annotation_train.txt'
+# baseImagePath = '/Users/rezaasad/Documents/CMPT742/Project01/data/lfw'
+# d = DataList(labelPath, baseImagePath)
+# img = d.OpenImg('Leonardo_DiCaprio_0009.jpg')
+# d.MakeList()
+# d.DataSplit()
+# print(len(d.dataVal))
+# print(len(d.dataTrain))
