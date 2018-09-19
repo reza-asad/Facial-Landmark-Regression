@@ -8,6 +8,9 @@ class DataList():
         self.baseImagePath = baseImagePath
         self.dtype = dtype
 
+    def ToArray(self, img):
+        return np.array(img, dtype=self.dtype)
+
     def ToTensor(self, img):
         pass
 
@@ -17,11 +20,11 @@ class DataList():
     def OpenImg(self, imgName):
         fileName = '_'.join(imgName.split('_')[:-1])
         imgPath = self.baseImagePath + '/' + fileName + '/' + imgName
-        img = np.asarray(Image.open(imgPath).convert('L'), dtype=self.dtype)
+        img = Image.open(imgPath).convert('L')
         return img
 
-    def Crop(self, img):
-        pass
+    def Crop(self, img, coords):
+        return img.crop(coords)
 
     def MakeList(self):
         with open(labelPath, 'r'):
@@ -33,7 +36,10 @@ class DataList():
                 # Open the image
                 img = self.OpenImg(label[0])
                 # Crop the image
-                img = self.Crop(img)
+                coords = tuple(label[1:5])
+                img = self.Crop(img, coords)
+                # Convert the img to numpy array
+                img = self.ToArray(img)
                 # Scale the image to (-1, 1)
                 img = self.ScaleImg(img)
                 # Similarly scale the landmarks to (-1, 1)
@@ -52,4 +58,7 @@ class DataList():
 labelPath = '/Users/rezaasad/Documents/CMPT742/Project01/data/training_data/LFW_annotation_train.txt'
 baseImagePath = '/Users/rezaasad/Documents/CMPT742/Project01/data/lfw'
 d = DataList(labelPath, baseImagePath)
-img = d.OpenImg('AJ_Cook_0001.jpg')
+img = d.OpenImg('Leonardo_DiCaprio_0009.jpg')
+img.show()
+img = d.Crop(img, (81, 78, 174, 171))
+img.show()
