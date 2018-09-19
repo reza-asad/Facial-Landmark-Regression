@@ -8,5 +8,6 @@ class LFWDataset(Dataset):
     def __len__(self):
         return len(self.dataList)
 
-    def __getitem__(self, item):
-        pass
+    def __getitem__(self, idx):
+        item = self.dataList[idx]
+        return item['img'], item['label']
