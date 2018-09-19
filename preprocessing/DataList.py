@@ -1,6 +1,7 @@
 from PIL import Image
 import numpy as np
 import torch
+import random
 
 class DataList():
     def __init__(self, labelPath, baseImagePath, dtype=np.float32):
@@ -59,7 +60,17 @@ class DataList():
                     # Add the data point to the data list.
                     self.data.append({'label':labelTensor, 'img':imgTensor})
 
+    def DataSplit(self, trainPort=0.8):
+        # Shuffle the dataset
+        random.shuffle(self.data)
+        # Split the data into train and validation.
+        # Training Data
+        numData = len(self.data)
+        numTrain = int(trainPort * numData)
+        self.dataTrain = self.data[: numTrain]
 
+        # Validation Data
+        self.dataVal = self.data[numTrain: ]
 
 
 # small test
@@ -68,3 +79,6 @@ baseImagePath = '/Users/rezaasad/Documents/CMPT742/Project01/data/lfw'
 d = DataList(labelPath, baseImagePath)
 img = d.OpenImg('Leonardo_DiCaprio_0009.jpg')
 d.MakeList()
+d.DataSplit()
+print(len(d.dataVal))
+print(len(d.dataTrain))
