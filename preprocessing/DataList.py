@@ -15,7 +15,7 @@ class DataList():
         pass
 
     def ScaleImg(self, img):
-        pass
+        return 2 * img / 255.0 - 1
 
     def OpenImg(self, imgName):
         fileName = '_'.join(imgName.split('_')[:-1])
