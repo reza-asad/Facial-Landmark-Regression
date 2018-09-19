@@ -9,4 +9,5 @@ class LFWDataset(Dataset):
     def __len__(self):
         return len(self.dataList)
 
-
+    def __getitem__(self, item):
+        pass
