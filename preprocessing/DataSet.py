@@ -1,4 +1,4 @@
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 
 
 class LFWDataset(Dataset):
@@ -11,5 +11,5 @@ class LFWDataset(Dataset):
 
     def __getitem__(self, idx):
         img = self.X[idx]
-        label = self.y[idx]
+        label = self.y[idx].reshape(-1, 1)
         return img, label
