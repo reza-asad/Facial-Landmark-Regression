@@ -30,7 +30,7 @@ class Solver():
 
 
 
-    def train(self, model, optimizer, numEpochs, printEvery=100,
+    def train(self, model, optimizer, numEpochs=1, printEvery=100,
               loss_criteria=torch.nn.MSELoss()):
         loss_history = []
         for i in range(numEpochs):
@@ -62,8 +62,8 @@ class Solver():
                 if (t % printEvery) == 0:
                     print("Epoch %d, iteration %d : loss is %.2f" % (i, t, loss.item()))
                     # accuracy = computeAccuracy(model, self.validationLoader)
-                    print("The accuracy on validation set is: %.2f" % accuracy)
-                    print('--------')
+                    # print("The accuracy on validation set is: %.2f" % accuracy)
+            print('--------')
 
 
 

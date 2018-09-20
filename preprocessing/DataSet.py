@@ -11,5 +11,5 @@ class LFWDataset(Dataset):
 
     def __getitem__(self, idx):
         img = self.X[idx]
-        label = self.y[idx].reshape(-1, 1)
+        label = self.y[idx].reshape(-1)
         return img, label

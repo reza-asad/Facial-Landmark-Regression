@@ -4,7 +4,7 @@ import torch
 from PIL import Image
 
 class DataList():
-    def __init__(self, labelPath, baseImagePath, imgSize=(227, 227),
+    def __init__(self, labelPath, baseImagePath, imgSize=(225, 225),
                  dtype=np.float32):
         self.X = []
         self.y = []
@@ -20,7 +20,7 @@ class DataList():
     def OpenImg(self, imgName):
         fileName = '_'.join(imgName.split('_')[:-1])
         imgPath = self.baseImagePath + '/' + fileName + '/' + imgName
-        img = Image.open(imgPath).convert('L')
+        img = Image.open(imgPath)
         return img
 
     def Crop(self, img, coords, landMarks):
@@ -77,18 +77,19 @@ class DataList():
                     img, landMarks = self.Resize(img, landMarks)
                     # Convert the img to numpy array
                     img = self.ToArray(img)
+                    # Move the channel to the first dimension
+                    img = img.transpose(2, 0, 1)
 
                     ##TODO Image Augmentation
 
                     # Add the data point to the data list.
-                    h, w = img.shape
-                    img = img.reshape((1, h, w))
                     self.X.append(img)
                     self.y.append(landMarks)
 
         # Convert the data to tensor objects
         self.X = self.ToTensor(np.array(self.X, dtype=self.dtype))
         self.y = self.ToTensor(np.array(self.y, dtype=self.dtype))
+        f.close()
 
     def DataSplit(self, trainPort=0.8):
         # Shuffle the dataset

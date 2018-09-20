@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class AlexNetClassifier(nn.Module):
-    def __init__(self, numInFeatures, hiddenDims=[500, 500], numClasses=14):
+    def __init__(self, numInFeatures, hiddenDims=[100], numClasses=14):
         super().__init__()
         self.layers = nn.ModuleDict()
         self.numLayers = len(hiddenDims)
