@@ -1,15 +1,17 @@
 import numpy as np
 import torch
-import random
 
-import matplotlib.pyplot as plt
-import cv2
 from PIL import Image
 
 class DataList():
     def __init__(self, labelPath, baseImagePath, imgSize=(227, 227),
                  dtype=np.float32):
-        self.data = []
+        self.X = []
+        self.y = []
+        self.Xtrain = None
+        self.yTrain = None
+        self.Xval = None
+        self.yVal = None
         self.labelPath = labelPath
         self.baseImagePath = baseImagePath
         self.imgSize = imgSize
@@ -41,12 +43,13 @@ class DataList():
         return img, landMarks
 
     def ToArray(self, img):
-        return np.array(img, dtype=self.dtype)
+        return np.asarray(img, dtype=self.dtype)
 
-    def ScaleImg(self, img, landMarks):
-        img = 2.0 * img / 255.0 - 1.0
-        landMarks = 2.0 * landMarks / 255.0 - 1.0
-        return img, landMarks
+    def ScaleImages(self):
+        # Normalize the pixel values to be between (-1, 1)
+        self.X = 2.0 * self.X / 255.0 - 1.0
+        # Normalize the landMarks to be between (0, 1)
+        self.y = self.y / 255.0
 
     def ToTensor(self, img):
         return torch.from_numpy(img)
@@ -66,7 +69,7 @@ class DataList():
                     # Extract the landmarks consisting of (x,y) coordinates.
                     landMarks = label[4:].reshape(-1, 2)
 
-                    # Normalization Process
+                    # Image Modification Process
                     # Crop the image
                     coords = tuple(label[:4])
                     img, landMarks = self.Crop(img, coords, landMarks)
@@ -74,46 +77,33 @@ class DataList():
                     img, landMarks = self.Resize(img, landMarks)
                     # Convert the img to numpy array
                     img = self.ToArray(img)
-                    # Scale the image and landMarks to (-1, 1)
-                    img, landMarks = self.ScaleImg(img, landMarks)
 
-                    # Conversion to Tensor
-                    # Create a tensor object from the image and add the channel
-                    imgTensor = self.ToTensor(img)
-                    h, w = imgTensor.shape
-                    imgTensor = imgTensor.view((1, h, w))
-                    # Create tensor object from the labels.
-                    labelTensor = self.ToTensor(landMarks)
+                    ##TODO Image Augmentation
+
                     # Add the data point to the data list.
-                    self.data.append({'label':labelTensor, 'img':imgTensor})
+                    h, w = img.shape
+                    img = img.reshape((1, h, w))
+                    self.X.append(img)
+                    self.y.append(landMarks)
+
+        # Convert the data to tensor objects
+        self.X = self.ToTensor(np.array(self.X, dtype=self.dtype))
+        self.y = self.ToTensor(np.array(self.y, dtype=self.dtype))
 
     def DataSplit(self, trainPort=0.8):
         # Shuffle the dataset
-        random.shuffle(self.data)
+        numData = len(self.X)
+        randomIdx = np.arange(numData)
+        np.random.shuffle(randomIdx)
+        self.X = self.X[randomIdx]
+        self.y = self.y[randomIdx]
+
         # Split the data into train and validation.
         # Training Data
-        numData = len(self.data)
         numTrain = int(trainPort * numData)
-        self.dataTrain = self.data[: numTrain]
+        self.Xtrain = self.X[: numTrain, :]
+        self.yTrain = self.y[: numTrain, :]
 
         # Validation Data
-        self.dataVal = self.data[numTrain: ]
-
-
-# # small test
-# labelPath = '/Users/rezaasad/Documents/CMPT742/Project01/data/training_data/LFW_annotation_train.txt'
-# baseImagePath = '/Users/rezaasad/Documents/CMPT742/Project01/data/lfw'
-# d = DataList(labelPath, baseImagePath)
-
-
-# img, landMarks = d.MakeList()
-# # Lets' plot the img
-# figs, axes = plt.subplots(1,2)
-# axes[0].imshow(img, cmap='gray')
-# # Let's add pixels to the image
-# # draw = ImageDraw.Draw(img)
-# # draw.point(landMarks, fill=255)
-# for x,y in landMarks:
-#     cv2.circle(img, (x,y), 2, 255, thickness=1)
-# axes[1].imshow(img, cmap='gray')
-# plt.show()
+        self.Xval = self.X[numTrain:, :]
+        self.yVal = self.y[numTrain:, :]
