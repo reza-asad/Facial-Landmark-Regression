@@ -1,8 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision import models
 
-class LandMarkAlexNet(nn.Module):
+class AlexNetClassifier(nn.Module):
     def __init__(self, numInFeatures, hiddenDims=[500, 500], numClasses=14):
         super().__init__()
         self.layers = nn.ModuleDict()
@@ -15,7 +14,6 @@ class LandMarkAlexNet(nn.Module):
             # Batchnorm
             self.layers.update({'bn{}'.format(i): nn.BatchNorm1d(hiddenDims[i])})
             # Weight initialization
-            nn.init.kaiming_normal_(self.layers['bn{}'.format(i)].weight)
             numInFeatures = hiddenDims[i]
 
         self.affine = nn.Linear(hiddenDims[-1], numClasses)
