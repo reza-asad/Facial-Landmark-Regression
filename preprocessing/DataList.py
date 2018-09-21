@@ -41,9 +41,14 @@ class DataList():
         flipped = img.transpose(Image.FLIP_LEFT_RIGHT)
 
         # Flip the landmarks accordingly
-        for i in range(1, 7, 2):
-            landMarks[i-1], landMarks[i] = landMarks[i].copy(), landMarks[i-1].copy()
-        return flipped, landMarks
+        newLandMarks = landMarks.copy()
+        # Flip ll and rr
+        newLandMarks[0], newLandMarks[3] = newLandMarks[3].copy(), newLandMarks[0].copy()
+        # Flip lr and rl
+        newLandMarks[1], newLandMarks[2] = newLandMarks[2].copy(), newLandMarks[1].copy()
+        # Flip the l mouth and r mouth
+        newLandMarks[4], newLandMarks[5] = newLandMarks[5].copy(), newLandMarks[4].copy()
+        return flipped, newLandMarks
 
     def AlterBrightness(self, img, factor):
         img = ImageEnhance.Brightness(img).enhance(factor)
@@ -70,7 +75,7 @@ class DataList():
     def ToTensor(self, img):
         return torch.from_numpy(img)
 
-    def MakeList(self, numCrops=10):
+    def MakeList(self, numCrops=5):
         with open(self.labelPath, 'r') as f:
             for line in f:
                 # Extract the label
@@ -85,32 +90,39 @@ class DataList():
                     # Extract the landmarks consisting of (x,y) coordinates.
                     landMarks = label[4:].reshape(-1, 2)
 
-                    ##TODO Image Augmentation
+                    # Image Augmentation
                     coords = label[:4]
                     # Crop the image with some noise on the crop coordinates.
                     for i in range(numCrops):
                         noisyCoords = tuple(coords + self.CreateNoise(num=4, mean=0, std=5))
-                        croppedImg, croppedLandMark = self.Crop(img, landMarks, noisyCoords)
+                        croppedImg, croppedLandMarks = self.Crop(img, landMarks, noisyCoords)
                         # Flipping of the cropped images
-                        croppedImg, croppedLandMark = self.Flip(croppedImg, croppedLandMark)
+                        flippedImg, flippedLandMarks = self.Flip(croppedImg, croppedLandMarks)
                         brightnessFactor = self.CreateNoise(num=1, mean=1, std=0.5)
                         croppedImg = self.AlterBrightness(croppedImg, brightnessFactor)
+                        flippedImg = self.AlterBrightness(flippedImg, brightnessFactor)
 
                         # Resize the image to a fixed size
-                        croppedImg, croppedLandMark = self.Resize(croppedImg, croppedLandMark)
+                        croppedImg, croppedLandMark = self.Resize(croppedImg, croppedLandMarks)
+                        flippedImg, flippedLandMarks = self.Resize(flippedImg, flippedLandMarks)
                         # Convert the img to numpy array
                         croppedImg = self.ToArray(croppedImg)
+                        flippedImg = self.ToArray(flippedImg)
                         # Move the channel to the first dimension
                         croppedImg = croppedImg.transpose(2, 0, 1)
+                        flippedImg = flippedImg.transpose(2, 0, 1)
 
                         # Add the data point to the data list.
                         self.X.append(croppedImg)
-                        self.y.append(croppedLandMark)
+                        self.X.append(flippedImg)
+                        self.y.append(croppedLandMarks)
+                        self.y.append(flippedLandMarks)
 
-        # Convert the data to tensor objects
-        self.X = self.ToTensor(np.array(self.X, dtype=self.dtype))
-        self.y = self.ToTensor(np.array(self.y, dtype=self.dtype))
         f.close()
+        # Convert the data to tensor objects
+        self.X = self.ToTensor(np.asarray(self.X, dtype=self.dtype))
+        self.y = self.ToTensor(np.asarray(self.y, dtype=self.dtype))
+
 
     def DataSplit(self, trainPort=0.8):
         # Shuffle the dataset
