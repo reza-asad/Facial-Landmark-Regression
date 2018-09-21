@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 from PIL import Image
+from PIL import ImageEnhance
 
 class DataList():
     def __init__(self, labelPath, baseImagePath, imgSize=(225, 225),
@@ -36,7 +37,7 @@ class DataList():
         for i in range(len(newLandMarks)):
             newLandMarks[i,0] -= topLeftX
             newLandMarks[i,1] -= topLeftY
-        return [(cropppedImg, newLandMarks)]
+        return cropppedImg, newLandMarks
 
     def Flip(self, img, landMarks):
         # Flip the image left to right
@@ -45,10 +46,11 @@ class DataList():
         # Flip the landmarks accordingly
         for i in range(1, 7, 2):
             landMarks[i-1], landMarks[i] = landMarks[i].copy(), landMarks[i-1].copy()
-        return [(flipped, landMarks)]
+        return flipped, landMarks
 
-    def AlterBrightness(self, img, landMarks):
-        pass
+    def AlterBrightness(self, img, factor):
+        img = ImageEnhance.Brightness(img).enhance(factor)
+        return img
 
     def Resize(self, img, landMarks):
         h, w = img.size[0], img.size[1]
@@ -87,7 +89,6 @@ class DataList():
                     landMarks = label[4:].reshape(-1, 2)
 
                     ##TODO Image Augmentation
-                    augmentedImgs = []
                     coords = label[:4]
                     # Crop the image with some noise on the crop coordinates.
                     for i in range(numCrops):
@@ -99,7 +100,7 @@ class DataList():
                         croppedImg = self.AlterBrightness(croppedImg, brightnessFactor)
 
                         # Resize the image to a fixed size
-                        croppedImg, croppedLandMark= self.Resize(croppedImg, croppedLandMark)
+                        croppedImg, croppedLandMark = self.Resize(croppedImg, croppedLandMark)
                         # Convert the img to numpy array
                         croppedImg = self.ToArray(croppedImg)
                         # Move the channel to the first dimension
