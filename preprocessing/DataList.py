@@ -23,6 +23,15 @@ class DataList():
         img = Image.open(imgPath)
         return img
 
+    def Flip(self, img, landMarks):
+        # Flip the image left to right
+        flipped = img.transpose(Image.FLIP_LEFT_RIGHT)
+
+        # Flip the landmarks accordingly
+        for i in range(3, 9, 2):
+            landMarks[i-1], landMarks[i] = landMarks[i].copy(), landMarks[i-1].copy()
+        return flipped, landMarks
+
     def Crop(self, img, coords, landMarks):
         img = img.crop(coords)
         topLeftX, topLeftY = coords[0], coords[1]
@@ -67,7 +76,14 @@ class DataList():
                     # Convert the label data into float
                     label = np.array(label[1:], dtype=self.dtype)
                     # Extract the landmarks consisting of (x,y) coordinates.
-                    landMarks = label[4:].reshape(-1, 2)
+                    landMarks = label.reshape(-1, 2)
+
+                    ##TODO Image Augmentation
+                    augmentedImgs = [(img,landMarks)]
+                    # Flipping of the image
+                    augmentedImgs += self.Flip(img, landMarks)
+                    augmentedImgs += self.RandomCrop(img, landMarks, numCrops=4)
+                    augmentedImgs += self.AlterBrightness(img, landMarks)
 
                     # Image Modification Process
                     # Crop the image
@@ -79,8 +95,6 @@ class DataList():
                     img = self.ToArray(img)
                     # Move the channel to the first dimension
                     img = img.transpose(2, 0, 1)
-
-                    ##TODO Image Augmentation
 
                     # Add the data point to the data list.
                     self.X.append(img)
