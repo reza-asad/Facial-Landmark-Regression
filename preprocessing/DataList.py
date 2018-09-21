@@ -24,8 +24,8 @@ class DataList():
         img = Image.open(imgPath)
         return img
 
-    def CreateNoise(self, num=4, std=10):
-        return np.random.randn(num) * std
+    def CreateNoise(self, num, mean, std):
+        return np.random.normal(mean, std, num)
 
     def Crop(self, img, landMarks, coords):
         # First crop the original image
@@ -33,10 +33,7 @@ class DataList():
         topLeftX, topLeftY = coords[0], coords[1]
         # Update the coordinates of landMarks relative to the
         # Cropped image.
-        newLandMarks = landMarks.copy()
-        for i in range(len(newLandMarks)):
-            newLandMarks[i,0] -= topLeftX
-            newLandMarks[i,1] -= topLeftY
+        newLandMarks = landMarks - [topLeftX, topLeftY]
         return cropppedImg, newLandMarks
 
     def Flip(self, img, landMarks):
@@ -92,11 +89,11 @@ class DataList():
                     coords = label[:4]
                     # Crop the image with some noise on the crop coordinates.
                     for i in range(numCrops):
-                        noisyCoords = tuple(coords + self.CreateNoise(num=4, std=10))
+                        noisyCoords = tuple(coords + self.CreateNoise(num=4, mean=0, std=5))
                         croppedImg, croppedLandMark = self.Crop(img, landMarks, noisyCoords)
                         # Flipping of the cropped images
                         croppedImg, croppedLandMark = self.Flip(croppedImg, croppedLandMark)
-                        brightnessFactor = self.CreateNoise(num=1, std=0.5)
+                        brightnessFactor = self.CreateNoise(num=1, mean=1, std=0.5)
                         croppedImg = self.AlterBrightness(croppedImg, brightnessFactor)
 
                         # Resize the image to a fixed size
