@@ -23,28 +23,33 @@ class DataList():
         img = Image.open(imgPath)
         return img
 
-    def Flip(self, img, landMarks):
-        # Flip the image left to right
-        flipped = img.transpose(Image.FLIP_LEFT_RIGHT)
-
-        # Flip the landmarks accordingly
-        for i in range(1, 7, 2):
-            landMarks[i-1], landMarks[i] = landMarks[i].copy(), landMarks[i-1].copy()
-        return flipped, landMarks
-
     def CreateNoise(self, num=4, std=10):
         return np.random.randn(num) * std
 
     def Crop(self, img, landMarks, coords):
         # First crop the original image
-        img = img.crop(coords)
+        cropppedImg = img.crop(coords)
         topLeftX, topLeftY = coords[0], coords[1]
         # Update the coordinates of landMarks relative to the
         # Cropped image.
-        for i in range(len(landMarks)):
-            landMarks[i,0] -= topLeftX
-            landMarks[i,1] -= topLeftY
-        return img, landMarks
+        newLandMarks = landMarks.copy()
+        for i in range(len(newLandMarks)):
+            newLandMarks[i,0] -= topLeftX
+            newLandMarks[i,1] -= topLeftY
+        return [(cropppedImg, newLandMarks)]
+
+    def Flip(self, img, landMarks):
+        # Flip the image left to right
+        flipped = img.transpose(Image.FLIP_LEFT_RIGHT)
+
+        # Flip the landmarks accordingly
+        newLandMarks = landMarks.copy()
+        for i in range(1, 7, 2):
+            newLandMarks[i-1], newLandMarks[i] = newLandMarks[i].copy(), newLandMarks[i-1].copy()
+        return [(flipped, newLandMarks)]
+
+    def AlterBrightness(self, img, landMarks):
+        pass
 
     def Resize(self, img, landMarks):
         h, w = img.size[0], img.size[1]
@@ -67,7 +72,7 @@ class DataList():
     def ToTensor(self, img):
         return torch.from_numpy(img)
 
-    def MakeList(self, numCrops=4):
+    def MakeList(self, numCrops=5, numEnhanced=5):
         with open(self.labelPath, 'r') as f:
             for line in f:
                 # Extract the label
@@ -84,14 +89,17 @@ class DataList():
 
                     ##TODO Image Augmentation
                     augmentedImgs = []
-                    # Flipping of the image
-                    augmentedImgs += self.Flip(img, landMarks.copy())
                     coords = label[:4]
                     # Crop the image with some noise on the crop coordinates.
                     for i in range(numCrops):
-                        noisyCoords = tuple(coords + self.CreateNoise())
-                        augmentedImgs += self.Crop(img, landMarks.copy(), noisyCoords)
-                    augmentedImgs += self.AlterBrightness(img, landMarks)
+                        noisyCoords = tuple(coords + self.CreateNoise(num=4, std=10))
+                        augmentedImgs += self.Crop(img, landMarks, noisyCoords)
+                    # Flipping of the cropped images
+                    for croppedImg, newLandMarks in augmentedImgs:
+                        augmentedImgs += self.Flip(croppedImg, newLandMarks)
+                    for i in range(numEnhanced):
+                        brightnessFactor = self.CreateNoise(num=1, std=0.5)
+                        augmentedImgs += self.AlterBrightness(img, landMarks, brightnessFactor)
 
                     # Image Modification Process
                     # Resize the image to a fixed size
