@@ -4,11 +4,13 @@ import torch
 from PIL import Image
 from PIL import ImageEnhance
 
+import os
+
 class DataList():
     def __init__(self, labelPath, baseImagePath, imgSize=(225, 225),
                  dtype=np.float32, std=5):
-        self.X = []
-        self.y = []
+        self.X = None
+        self.y = None
         self.Xtrain = None
         self.yTrain = None
         self.Xval = None
@@ -66,71 +68,81 @@ class DataList():
     def ToArray(self, img):
         return np.asarray(img, dtype=self.dtype)
 
-    def ScaleImages(self):
-        # Normalize the pixel values to be between (-1, 1)
-        self.X = 2.0 * self.X / 255.0 - 1.0
+    def ScaleLandMarks(self):
         # Normalize the landMarks to be between (0, 1)
         self.y = self.y / 255.0
+
 
     def ToTensor(self, img):
         return torch.from_numpy(img)
 
     def MakeList(self, numCrops=5):
         with open(self.labelPath, 'r') as f:
+            fileLength = sum(1 for line in f)
+        f.close()
+        with open(self.labelPath, 'r') as f:
+            numData = fileLength * numCrops * 2
+            self.X = np.zeros((numData, 3, self.imgSize[0], self.imgSize[1]),
+                              dtype=self.dtype)
+            self.y = np.zeros((numData, 7, 2), dtype=self.dtype)
+            j = 0
             for line in f:
                 # Extract the label
                 label = line.split()
-                if len(label) == 0:
-                    print("We have reached the end of the file")
-                else:
-                    # Open the image
-                    img = self.OpenImg(label[0])
-                    # Convert the label data into float
-                    label = np.array(label[1:], dtype=self.dtype)
-                    # Extract the landmarks consisting of (x,y) coordinates.
-                    landMarks = label[4:].reshape(-1, 2)
+                # Open the image
+                img = self.OpenImg(label[0])
+                # Convert the label data into float
+                label = np.array(label[1:], dtype=self.dtype)
+                # Extract the landmarks consisting of (x,y) coordinates.
+                landMarks = label[4:].reshape(-1, 2)
 
-                    # Image Augmentation
-                    coords = label[:4]
-                    # Crop the image with some noise on the crop coordinates.
-                    for i in range(numCrops):
-                        noisyCoords = tuple(coords + self.CreateNoise(num=4, mean=0, std=5))
-                        croppedImg, croppedLandMarks = self.Crop(img, landMarks, noisyCoords)
-                        # Flipping of the cropped images
-                        flippedImg, flippedLandMarks = self.Flip(croppedImg, croppedLandMarks)
-                        brightnessFactor = self.CreateNoise(num=1, mean=1, std=0.5)
-                        croppedImg = self.AlterBrightness(croppedImg, brightnessFactor)
-                        flippedImg = self.AlterBrightness(flippedImg, brightnessFactor)
+                # Image Augmentation
+                coords = label[:4]
+                # Crop the image with some noise on the crop coordinates.
+                for i in range(numCrops):
+                    noisyCoords = tuple(coords + self.CreateNoise(num=4, mean=0, std=5))
+                    croppedImg, croppedLandMarks = self.Crop(img, landMarks, noisyCoords)
+                    # Flipping of the cropped images
+                    flippedImg, flippedLandMarks = self.Flip(croppedImg, croppedLandMarks)
+                    brightnessFactor = self.CreateNoise(num=1, mean=1.5, std=0.5)
+                    croppedImg = self.AlterBrightness(croppedImg, brightnessFactor)
+                    flippedImg = self.AlterBrightness(flippedImg, brightnessFactor)
 
-                        # Resize the image to a fixed size
-                        croppedImg, croppedLandMark = self.Resize(croppedImg, croppedLandMarks)
-                        flippedImg, flippedLandMarks = self.Resize(flippedImg, flippedLandMarks)
-                        # Convert the img to numpy array
-                        croppedImg = self.ToArray(croppedImg)
-                        flippedImg = self.ToArray(flippedImg)
-                        # Move the channel to the first dimension
-                        croppedImg = croppedImg.transpose(2, 0, 1)
-                        flippedImg = flippedImg.transpose(2, 0, 1)
+                    # Resize the image to a fixed size
+                    croppedImg, croppedLandMark = self.Resize(croppedImg, croppedLandMarks)
+                    flippedImg, flippedLandMarks = self.Resize(flippedImg, flippedLandMarks)
+                    # Convert the img to numpy array
+                    croppedImg = self.ToArray(croppedImg)
+                    flippedImg = self.ToArray(flippedImg)
+                    # Move the channel to the first dimension
+                    croppedImg = croppedImg.transpose(2, 0, 1)
+                    flippedImg = flippedImg.transpose(2, 0, 1)
 
-                        # Add the data point to the data list.
-                        self.X.append(croppedImg)
-                        self.X.append(flippedImg)
-                        self.y.append(croppedLandMarks)
-                        self.y.append(flippedLandMarks)
-
+                    # Add the data point to the data list.
+                    self.X[j] = 2 * croppedImg / 255.0 - 1
+                    self.X[j+1] = 2 * flippedImg / 255.0 - 1
+                    self.y[j] = croppedLandMarks
+                    self.y[j+1] = flippedLandMarks
+                    j += 2
         f.close()
-        # Convert the data to tensor objects
-        self.X = self.ToTensor(np.asarray(self.X, dtype=self.dtype))
-        self.y = self.ToTensor(np.asarray(self.y, dtype=self.dtype))
 
 
-    def DataSplit(self, trainPort=0.8):
+    def DataSplit(self, trainPort=0.8, numChunks=100):
         # Shuffle the dataset
-        numData = len(self.X)
-        randomIdx = np.arange(numData)
+        numData = len(self.X) // numChunks
+        remainder = int(len(self.X) % numChunks)
+        for i in range(numChunks):
+            if i % 20 == 0:
+                print("Shuffling chunk %d / %d" % (i, numChunks))
+            randomIdx = np.arange(numData*i, numData*(i+1))
+            np.random.shuffle(randomIdx)
+            self.X[randomIdx] = self.X[randomIdx]
+            self.y[randomIdx] = self.y[randomIdx]
+        i += 1
+        randomIdx = np.arange(numData*i, numData*i + remainder)
         np.random.shuffle(randomIdx)
-        self.X = self.X[randomIdx]
-        self.y = self.y[randomIdx]
+        self.X[randomIdx] = self.X[randomIdx]
+        self.y[randomIdx] = self.y[randomIdx]
 
         # Split the data into train and validation.
         # Training Data
