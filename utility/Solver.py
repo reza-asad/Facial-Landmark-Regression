@@ -16,7 +16,8 @@ class Solver():
         self.validationLoader = DataLoader(self.valDataSet, batch_size= self.batchSize,
                                            shuffle=True, num_workers=6)
 
-    def computeAccuracy(self, model, loader, radius=[0.25, 0.5, 0.75, 1], lossCriteria):
+    def computeAccuracy(self, model, loader, lossCriteria,
+                        radius=[0.25, 0.5, 0.75, 1]):
         # Put the model in evaluation mode
         model.eval()
         # Making sure we're not computing gradients
@@ -48,7 +49,9 @@ class Solver():
                 # for each radius.
                 for i in range(len(radius)):
                     numDetected[i] += (dist < radius[i]).sum()
-            return numDetected / float(numSamples)
+            accuracy = numDetected / float(numSamples)
+            accuracy = dict(zip(radius, accuracy))
+            return validationLoss, accuracy
 
     def train(self, model, optimizer, numEpochs=1, printEvery=100,
               lossCriteria=torch.nn.MSELoss()):
@@ -82,7 +85,7 @@ class Solver():
                 if (t % printEvery) == 0:
                     print("Epoch %d, iteration %d : loss is %.2f" % (i, t, loss.item()))
                     validationLoss, accuracy = self.computeAccuracy(model, self.validationLoader, lossCriteria)
-                    print("The accuracy on validation set is: %.2f" % accuracy)
+                    print("The accuracy on validation set is: {}".format(accuracy))
             print('--------')
         return trainLoss, validationLoss
 
