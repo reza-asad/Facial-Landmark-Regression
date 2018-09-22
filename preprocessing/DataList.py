@@ -79,6 +79,7 @@ class DataList():
         f.close()
         with open(self.labelPath, 'r') as f:
             numData = fileLength * numCrops * 2
+            numData = 1000
             self.X = np.zeros((numData, 3, self.imgSize[0], self.imgSize[1]),
                               dtype=self.dtype)
             self.y = np.zeros((numData, 7, 2), dtype=self.dtype)
@@ -121,6 +122,8 @@ class DataList():
                     self.y[j] = croppedLandMarks
                     self.y[j+1] = flippedLandMarks
                     j += 2
+                # Close the image once you have used it.
+                img.close()
                 if j == 1000:
                     break
         f.close()
