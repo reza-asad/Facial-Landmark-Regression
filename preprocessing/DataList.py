@@ -8,7 +8,7 @@ import os
 
 class DataList():
     def __init__(self, labelPath, baseImagePath, imgSize=(225, 225),
-                 dtype=np.float32, std=5):
+                 dtype=np.float32):
         self.X = None
         self.y = None
         self.Xtrain = None
@@ -38,18 +38,15 @@ class DataList():
         newLandMarks = landMarks - [topLeftX, topLeftY]
         return cropppedImg, newLandMarks
 
-    def Flip(self, img, landMarks):
+    def Flip(self, img, landMarks, coords):
         # Flip the image left to right
         flipped = img.transpose(Image.FLIP_LEFT_RIGHT)
 
         # Flip the landmarks accordingly
         newLandMarks = landMarks.copy()
-        # Flip ll and rr
-        newLandMarks[0], newLandMarks[3] = newLandMarks[3].copy(), newLandMarks[0].copy()
-        # Flip lr and rl
-        newLandMarks[1], newLandMarks[2] = newLandMarks[2].copy(), newLandMarks[1].copy()
-        # Flip the l mouth and r mouth
-        newLandMarks[4], newLandMarks[5] = newLandMarks[5].copy(), newLandMarks[4].copy()
+        halfX = (coords[2] - coords[0]) / 2.0
+        diffX = newLandMarks[:, 0] - halfX
+        newLandMarks[:, 0] -= 2*diffX
         return flipped, newLandMarks
 
     def AlterBrightness(self, img, factor):
@@ -76,7 +73,7 @@ class DataList():
     def ToTensor(self, img):
         return torch.from_numpy(img)
 
-    def MakeList(self, numCrops=5):
+    def MakeList(self, numCrops=1):
         with open(self.labelPath, 'r') as f:
             fileLength = sum(1 for line in f)
         f.close()
@@ -103,13 +100,13 @@ class DataList():
                     noisyCoords = tuple(coords + self.CreateNoise(num=4, mean=0, std=5))
                     croppedImg, croppedLandMarks = self.Crop(img, landMarks, noisyCoords)
                     # Flipping of the cropped images
-                    flippedImg, flippedLandMarks = self.Flip(croppedImg, croppedLandMarks)
+                    flippedImg, flippedLandMarks = self.Flip(croppedImg, croppedLandMarks, noisyCoords)
                     brightnessFactor = self.CreateNoise(num=1, mean=1.5, std=0.5)
                     croppedImg = self.AlterBrightness(croppedImg, brightnessFactor)
                     flippedImg = self.AlterBrightness(flippedImg, brightnessFactor)
 
                     # Resize the image to a fixed size
-                    croppedImg, croppedLandMark = self.Resize(croppedImg, croppedLandMarks)
+                    croppedImg, croppedLandMarks = self.Resize(croppedImg, croppedLandMarks)
                     flippedImg, flippedLandMarks = self.Resize(flippedImg, flippedLandMarks)
                     # Convert the img to numpy array
                     croppedImg = self.ToArray(croppedImg)
@@ -124,13 +121,16 @@ class DataList():
                     self.y[j] = croppedLandMarks
                     self.y[j+1] = flippedLandMarks
                     j += 2
+                if j == 1000:
+                    break
         f.close()
 
 
     def DataSplit(self, trainPort=0.8, numChunks=100):
         # Shuffle the dataset
-        numData = len(self.X) // numChunks
-        remainder = int(len(self.X) % numChunks)
+        totalData = len(self.X)
+        numData = totalData // numChunks
+        remainder = len(self.X) % numChunks
         for i in range(numChunks):
             if i % 20 == 0:
                 print("Shuffling chunk %d / %d" % (i, numChunks))
@@ -146,7 +146,7 @@ class DataList():
 
         # Split the data into train and validation.
         # Training Data
-        numTrain = int(trainPort * numData)
+        numTrain = int(trainPort * totalData)
         self.Xtrain = self.X[: numTrain, :]
         self.yTrain = self.y[: numTrain, :]
 
