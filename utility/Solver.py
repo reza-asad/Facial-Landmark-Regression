@@ -16,12 +16,13 @@ class Solver():
         self.validationLoader = DataLoader(self.valDataSet, batch_size= self.batchSize,
                                            shuffle=True, num_workers=6)
 
-    def computeAccuracy(self, model, loader, radius=[1]):
+    def computeAccuracy(self, model, loader, radius=[0.25, 0.5, 0.75, 1], lossCriteria):
         # Put the model in evaluation mode
         model.eval()
         # Making sure we're not computing gradients
         numSamples = 0
         numDetected = np.zeros(len(radius))
+        validationLoss = []
         with torch.no_grad():
             for (x, y) in loader:
                 # Move to the right device
@@ -30,6 +31,10 @@ class Solver():
 
                 # Compute the land mark coordinates.
                 predictions = model.forward(x)
+
+                # Compute the validation loss
+                loss = lossCriteria(predictions, y)
+                validationLoss.append(loss.item())
 
                 # Find the distance to true label
                 dist = (predictions - y)**2
@@ -47,7 +52,7 @@ class Solver():
 
     def train(self, model, optimizer, numEpochs=1, printEvery=100,
               lossCriteria=torch.nn.MSELoss()):
-        lossHistory = []
+        trainLoss, validationLoss = [], []
         for i in range(numEpochs):
             print("This is epoch %d" % (i))
             for t, (x, y) in enumerate(self.trainLoader):
@@ -63,7 +68,7 @@ class Solver():
 
                 # Compute the loss and save it.
                 loss = lossCriteria(coords, y)
-                lossHistory.append(loss.item())
+                trainLoss.append(loss.item())
 
                 # Zero out the gradients before optimization
                 optimizer.zero_grad()
@@ -76,10 +81,10 @@ class Solver():
 
                 if (t % printEvery) == 0:
                     print("Epoch %d, iteration %d : loss is %.2f" % (i, t, loss.item()))
-                    accuracy = self.computeAccuracy(model, self.validationLoader)
+                    validationLoss, accuracy = self.computeAccuracy(model, self.validationLoader, lossCriteria)
                     print("The accuracy on validation set is: %.2f" % accuracy)
             print('--------')
-        return lossHistory
+        return trainLoss, validationLoss
 
 
 
