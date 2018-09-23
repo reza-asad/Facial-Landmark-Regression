@@ -1,15 +1,49 @@
 from torch.utils.data import Dataset
+from PIL import Image
+import torch
+import numpy as np
 
 
 class LFWDataset(Dataset):
-    def __init__(self, X, y):
+    def __init__(self, X, y, inputDim=(225, 225)):
         self.X = X
         self.y = y
+        self.inputDim = inputDim
 
     def __len__(self):
         return len(self.X)
 
+    def Resize(self, img, landMarks):
+        # Convert the array to img
+        img = Image.fromarray(img.astype('uint8'))
+        h, w = img.size[0], img.size[1]
+        img = img.resize(self.inputDim)
+        hRatio = self.inputDim[0] / float(h)
+        wRatio = self.inputDim[1] / float(w)
+        landMarks[:, 0] *= hRatio
+        landMarks[:, 1] *= wRatio
+        return img, landMarks
+
+    def ScaleData(self, img, landMarks):
+        img = 2 * img / 255.0 - 1
+        landMarks = landMarks / 255.0
+        return img, landMarks
+
     def __getitem__(self, idx):
+        # Extract the img, label and dtype
         img = self.X[idx]
-        label = self.y[idx].reshape(-1)
+        label = self.y[idx]
+        dtype = img.dtype
+
+        # Resize the image to match the input of our model.
+        img, label = self.Resize(img, label)
+        # Convert the label to 1D array
+        label = label.reshape(-1)
+        # Convert the image and landmarks to tensor
+        img = np.asarray(img, dtype=dtype).transpose(2, 0, 1)
+        img = torch.from_numpy(img)
+        label = torch.from_numpy(label)
+        # Scale the image and the landmarks.
+        img, label = self.ScaleData(img, label)
+
         return img, label

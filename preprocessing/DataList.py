@@ -7,7 +7,7 @@ from PIL import ImageEnhance
 import os
 
 class DataList():
-    def __init__(self, labelPath, baseImagePath, imgSize=(225, 225),
+    def __init__(self, labelPath, baseImagePath, imgSize=(90, 90),
                  dtype=np.float32):
         self.X = None
         self.y = None
@@ -65,11 +65,6 @@ class DataList():
     def ToArray(self, img):
         return np.asarray(img, dtype=self.dtype)
 
-    def ScaleLandMarks(self):
-        # Normalize the landMarks to be between (0, 1)
-        self.y = self.y / 255.0
-
-
     def ToTensor(self, img):
         return torch.from_numpy(img)
 
@@ -80,7 +75,7 @@ class DataList():
         with open(self.labelPath, 'r') as f:
             numData = fileLength * numCrops * 2
             numData = 1000
-            self.X = np.zeros((numData, 3, self.imgSize[0], self.imgSize[1]),
+            self.X = np.zeros((numData, self.imgSize[0], self.imgSize[1], 3),
                               dtype=self.dtype)
             self.y = np.zeros((numData, 7, 2), dtype=self.dtype)
             j = 0
@@ -112,13 +107,10 @@ class DataList():
                     # Convert the img to numpy array
                     croppedImg = self.ToArray(croppedImg)
                     flippedImg = self.ToArray(flippedImg)
-                    # Move the channel to the first dimension
-                    croppedImg = croppedImg.transpose(2, 0, 1)
-                    flippedImg = flippedImg.transpose(2, 0, 1)
 
                     # Add the data point to the data list.
-                    self.X[j] = 2 * croppedImg / 255.0 - 1
-                    self.X[j+1] = 2 * flippedImg / 255.0 - 1
+                    self.X[j] = croppedImg
+                    self.X[j+1] = flippedImg
                     self.y[j] = croppedLandMarks
                     self.y[j+1] = flippedLandMarks
                     j += 2
