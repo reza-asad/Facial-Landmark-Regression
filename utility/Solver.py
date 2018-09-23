@@ -17,7 +17,7 @@ class Solver():
                                            shuffle=True, num_workers=6)
 
     def computeAccuracy(self, model, loader, lossCriteria,
-                        radius=[0.25, 0.5, 0.75, 1]):
+                        radius=np.array([0.25, 0.5, 0.75, 1])):
         # Put the model in evaluation mode
         model.eval()
         # Making sure we're not computing gradients
@@ -56,6 +56,8 @@ class Solver():
     def train(self, model, optimizer, numEpochs=1, printEvery=100,
               lossCriteria=torch.nn.MSELoss()):
         trainLoss, validationLoss = [], []
+        radius = np.linspace(0, 1, 20)
+        midIdx = len(radius) // 2
         for i in range(numEpochs):
             print("This is epoch %d" % (i))
             for t, (x, y) in enumerate(self.trainLoader):
@@ -84,10 +86,15 @@ class Solver():
 
                 if (t % printEvery) == 0:
                     print("Epoch %d, iteration %d : loss is %.2f" % (i, t, loss.item()))
-                    validationLoss, accuracy = self.computeAccuracy(model, self.validationLoader, lossCriteria)
-                    print("The accuracy on validation set is: {}".format(accuracy))
+                    # Define a range of radius values for accuracy computations.
+                    lossT, accuracy = self.computeAccuracy(model, self.validationLoader,
+                                                           lossCriteria, radius=radius)
+                    validationLoss += lossT
+                    # Print the accuracy on the middle radius
+                    print("The accuracy on validation set for radius {} is: {}".format(radius[midIdx],
+                                                                                       accuracy[radius[midIdx]]))
             print('--------')
-        return trainLoss, validationLoss
+        return trainLoss, validationLoss, accuracy
 
 
 
