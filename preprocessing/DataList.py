@@ -7,7 +7,7 @@ from PIL import ImageEnhance
 import os
 
 class DataList():
-    def __init__(self, labelPath, baseImagePath, imgSize=(90, 90),
+    def __init__(self, labelPath, baseImagePath, imgSize=(40, 40),
                  dtype=np.float32):
         self.X = None
         self.y = None
@@ -73,8 +73,8 @@ class DataList():
             fileLength = sum(1 for line in f)
         f.close()
         with open(self.labelPath, 'r') as f:
+            fileLength = 500
             numData = fileLength * numCrops * 2
-            numData = 1000
             self.X = np.zeros((numData, self.imgSize[0], self.imgSize[1], 3),
                               dtype=self.dtype)
             self.y = np.zeros((numData, 7, 2), dtype=self.dtype)
@@ -116,7 +116,7 @@ class DataList():
                     j += 2
                 # Close the image once you have used it.
                 img.close()
-                if j == 1000:
+                if j==1000:
                     break
         f.close()
 

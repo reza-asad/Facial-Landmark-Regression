@@ -5,7 +5,7 @@ import numpy as np
 
 
 class LFWDataset(Dataset):
-    def __init__(self, X, y, inputDim=(225, 225)):
+    def __init__(self, X, y, inputDim=(224, 224)):
         self.X = X
         self.y = y
         self.inputDim = inputDim
@@ -40,10 +40,10 @@ class LFWDataset(Dataset):
         # Convert the label to 1D array
         label = label.reshape(-1)
         # Convert the image and landmarks to tensor
-        img = np.asarray(img, dtype=dtype).transpose(2, 0, 1)
-        img = torch.from_numpy(img)
+        img_tensor = torch.from_numpy(np.asarray(img, dtype=dtype).transpose(2, 0, 1))
+        img.close()
         label = torch.from_numpy(label)
         # Scale the image and the landmarks.
-        img, label = self.ScaleData(img, label)
+        img_tensor, label = self.ScaleData(img_tensor, label)
 
-        return img, label
+        return img_tensor, label
