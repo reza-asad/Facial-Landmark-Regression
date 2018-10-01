@@ -7,7 +7,7 @@ from PIL import ImageEnhance
 import os
 
 class DataList():
-    def __init__(self, labelPath, baseImagePath, imgSize=(40, 40),
+    def __init__(self, labelPath, baseImagePath, imgSize=(120, 120),
                  dtype=np.float32):
         self.X = None
         self.y = None
@@ -31,12 +31,12 @@ class DataList():
 
     def Crop(self, img, landMarks, coords):
         # First crop the original image
-        cropppedImg = img.crop(coords)
+        croppedImg = img.crop(coords)
         topLeftX, topLeftY = coords[0], coords[1]
         # Update the coordinates of landMarks relative to the
         # Cropped image.
         newLandMarks = landMarks - [topLeftX, topLeftY]
-        return cropppedImg, newLandMarks
+        return croppedImg, newLandMarks
 
     def Flip(self, img, landMarks, coords):
         # Flip the image left to right
@@ -47,6 +47,9 @@ class DataList():
         halfX = (coords[2] - coords[0]) / 2.0
         diffX = newLandMarks[:, 0] - halfX
         newLandMarks[:, 0] -= 2*diffX
+        newLandMarks[0, :], newLandMarks[3, :] = newLandMarks[3, :].copy(), newLandMarks[0, :].copy()
+        newLandMarks[1, :], newLandMarks[2, :] = newLandMarks[2, :].copy(), newLandMarks[1, :].copy()
+        newLandMarks[4, :], newLandMarks[5, :] = newLandMarks[5, :].copy(), newLandMarks[4, :].copy()
         return flipped, newLandMarks
 
     def AlterBrightness(self, img, factor):
@@ -68,12 +71,11 @@ class DataList():
     def ToTensor(self, img):
         return torch.from_numpy(img)
 
-    def MakeList(self, numCrops=1):
+    def MakeList(self, numCrops=4):
         with open(self.labelPath, 'r') as f:
             fileLength = sum(1 for line in f)
         f.close()
         with open(self.labelPath, 'r') as f:
-            fileLength = 500
             numData = fileLength * numCrops * 2
             self.X = np.zeros((numData, self.imgSize[0], self.imgSize[1], 3),
                               dtype=self.dtype)
@@ -93,11 +95,11 @@ class DataList():
                 coords = label[:4]
                 # Crop the image with some noise on the crop coordinates.
                 for i in range(numCrops):
-                    noisyCoords = tuple(coords + self.CreateNoise(num=4, mean=0, std=5))
+                    noisyCoords = tuple(coords + self.CreateNoise(num=4, mean=0, std=3))
                     croppedImg, croppedLandMarks = self.Crop(img, landMarks, noisyCoords)
                     # Flipping of the cropped images
                     flippedImg, flippedLandMarks = self.Flip(croppedImg, croppedLandMarks, noisyCoords)
-                    brightnessFactor = self.CreateNoise(num=1, mean=1.5, std=0.5)
+                    brightnessFactor = self.CreateNoise(num=1, mean=1.5, std=0.3)
                     croppedImg = self.AlterBrightness(croppedImg, brightnessFactor)
                     flippedImg = self.AlterBrightness(flippedImg, brightnessFactor)
 
@@ -116,11 +118,44 @@ class DataList():
                     j += 2
                 # Close the image once you have used it.
                 img.close()
-                if j==1000:
-                    break
         f.close()
 
+    def MakeListTest(self, numCrops=4):
+        with open(self.labelPath, 'r') as f:
+            numData = sum(1 for line in f)
+        f.close()
+        with open(self.labelPath, 'r') as f:
+            self.X = np.zeros((numData, self.imgSize[0], self.imgSize[1], 3),
+                              dtype=self.dtype)
+            self.y = np.zeros((numData, 7, 2), dtype=self.dtype)
+            j = 0
+            for line in f:
+                # Extract the label
+                label = line.split()
+                # Open the image
+                img = self.OpenImg(label[0])
+                # Convert the label data into float
+                label = np.array(label[1:], dtype=self.dtype)
+                # Extract the landmarks consisting of (x,y) coordinates.
+                landMarks = label[4:].reshape(-1, 2)
 
+                # Image Augmentation
+                coords = label[:4]
+                # Crop the image.
+                croppedImg, croppedLandMarks = self.Crop(img, landMarks,coords)
+                # Resize the image to a fixed size
+                croppedImg, croppedLandMarks = self.Resize(croppedImg, croppedLandMarks)
+                # Convert the img to numpy array
+                croppedImg = self.ToArray(croppedImg)
+
+                # Add the data point to the data list.
+                self.X[j] = croppedImg
+                self.y[j] = croppedLandMarks
+                j += 1
+                # Close the image once you have used it.
+                img.close()
+        f.close()
+        
     def DataSplit(self, trainPort=0.8, numChunks=100):
         # Shuffle the dataset
         totalData = len(self.X)

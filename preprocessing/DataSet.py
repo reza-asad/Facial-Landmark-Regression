@@ -9,6 +9,7 @@ class LFWDataset(Dataset):
         self.X = X
         self.y = y
         self.inputDim = inputDim
+        torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
     def __len__(self):
         return len(self.X)
