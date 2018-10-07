@@ -17,7 +17,7 @@ class LFWDataset(Dataset):
     def Resize(self, img, landMarks):
         # Convert the array to img
         img = Image.fromarray(img.astype('uint8'))
-        h, w = img.size[0], img.size[1]
+        w, h = img.size
         img = img.resize(self.inputDim)
         hRatio = self.inputDim[0] / float(h)
         wRatio = self.inputDim[1] / float(w)

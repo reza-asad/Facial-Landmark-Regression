@@ -57,7 +57,7 @@ class DataList():
         return img
 
     def Resize(self, img, landMarks):
-        h, w = img.size[0], img.size[1]
+        w, h = img.size
         img = img.resize(self.imgSize)
         hRatio = self.imgSize[0] / float(h)
         wRatio = self.imgSize[1] / float(w)
